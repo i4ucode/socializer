@@ -20,6 +20,10 @@ namespace Socializer;
  * $profile = $linkedin->api('GET', '/people/~');
  * $companies = $linkedin->api('GET', '/companies');
  * $linkedin->api('POST', '/companies/XXXXXXX/shares', $payload);
+ *
+ *
+ * @author Jodie Dunlop <jodiedunlop@gmail.com>
+ * @copyright Copyright (C) 2015 i4U - Creative Internet Consultants Pty Ltd.
  */
 use InvalidArgumentException;
 use RuntimeException;
