@@ -21,7 +21,6 @@ namespace Socializer;
  * $companies = $linkedin->api('GET', '/companies');
  * $linkedin->api('POST', '/companies/XXXXXXX/shares', $payload);
  *
- *
  * @author Jodie Dunlop <jodiedunlop@gmail.com>
  * @copyright Copyright (C) 2015 i4U - Creative Internet Consultants Pty Ltd.
  */
@@ -43,14 +42,23 @@ class LinkedIn
     public static $CURL_OPTS = array(
         CURLOPT_CONNECTTIMEOUT => 30,
         CURLOPT_TIMEOUT => 90,
-        CURLOPT_USERAGENT => 'linkedin-php-sdk',
+        CURLOPT_USERAGENT => 'socializer-linkedin',
         CURLOPT_RETURNTRANSFER => true,
     );
 
+    /** @var resource|null  */
     protected $curl = null;
+
+    /** @var array */
     protected $config = array();
+
+    /** @var string|null  */
     protected $accessToken = null;
+
+    /** @var int|null */
     protected $accessTokenExpires = null;
+
+    /** @var string|null */
     protected $authState = null;
 
     /**
@@ -72,7 +80,7 @@ class LinkedIn
             throw new RuntimeException('Required PHP CURL extension is not loaded');
         }
 
-        $args = $this->extendArray(array(
+        $args = array_merge(array(
             'api_key' => null,
             'api_secret' => null,
             'callback_url' => false,
@@ -97,7 +105,7 @@ class LinkedIn
      */
     public function getAuthUrl(array $args = array())
     {
-        $args = $this->extendArray(array(
+        $args = array_merge(array(
             'response_type' => 'code',
             'client_id' => $this->config['api_key'],
             'scope' => 'r_basicprofile w_share',
@@ -116,12 +124,12 @@ class LinkedIn
      * Exchange the authorization code for an access token
      *
      * @param string $code Authorization code to exchange for a token
-     * @param array $params Optional parameters
+     * @param array $params Optional parameters for sending to the LinkedIn API
      * @return string Token
      */
     public function exchangeCodeForAccessToken($code, array $params = array())
     {
-        $params = $this->extendArray(array(
+        $params = array_merge(array(
             'grant_type' => 'authorization_code',
             'client_id' => $this->config['api_key'],
             'client_secret' => $this->config['api_secret'],
@@ -132,8 +140,9 @@ class LinkedIn
             throw new InvalidArgumentException('Supplied "code" argument is empty');
         }
 
-        $data = $this->extendArray($params, array('code' => $code));
-        $response = $this->makeRequest('POST', $this->makeUrl(self::$OAUTH_URL . '/accessToken'), $data, array('request_format'=>'urlencoded'));
+        $data = array_merge($params, array('code' => $code));
+        $endpoint = $this->makeUrl(self::$OAUTH_URL . '/accessToken');
+        $response = $this->makeRequest('POST', $endpoint, $data, array('request_format' => 'urlencoded'));
 
         // Cache token for future requests
         $this->accessToken = $response['access_token'];
@@ -153,15 +162,26 @@ class LinkedIn
 
     }
 
+    /**
+     * Returns the current access token (if any).  This can be set either with exchangeCodeForAccessToken() or via the
+     * setAccessToken() method.
+     *
+     * @return string|null
+     */
     public function getAccessToken()
     {
         return $this->accessToken;
     }
 
-	public function hasAccessToken()
-	{
-		return !empty($this->accessToken);
-	}
+    /**
+     * Whether an access token has been set (either through a code exchange or explicit call to setAccessToken())
+     *
+     * @return bool
+     */
+    public function hasAccessToken()
+    {
+        return !empty($this->accessToken);
+    }
 
     /**
      * Set the access token manually
@@ -189,7 +209,7 @@ class LinkedIn
     /**
      * Send a request to the LinkedIn API
      *
-     * @param string $method  HTTP Request Method Verb (GET|POST|DELETE|PUT)
+     * @param string $method HTTP Request Method Verb (GET|POST|DELETE|PUT)
      * @param string $path
      * @param mixed $data
      * @param array $args
@@ -207,19 +227,6 @@ class LinkedIn
         return $this->makeRequest($method, $url, $data, $args);
     }
 
-//    public function oauth($path, $data = null, array $args = array())
-//    {
-//        //$args = $this->_extend(array(
-//        //	'response_format' => 'json',
-//        //), $args);
-//
-//        // Build query to be appended to endpoint
-//        $url = $this->makeUrl(self::$OAUTH_URL, $path);
-//        error_log("OAUTH URL: $url");
-//
-//        return $this->makeRequest('GET', $url, $data, $args);
-//    }
-
     /**
      * Make an HTTP request and return the response. Used by the api() method internally.
      *
@@ -231,7 +238,7 @@ class LinkedIn
      */
     protected function makeRequest($method, $url, $data = null, array $args = array())
     {
-        $args = $this->extendArray(array(
+        $args = array_merge(array(
             'request_format' => 'json',
             'response_format' => 'json',
         ), $args);
@@ -240,10 +247,10 @@ class LinkedIn
 
         // Set appropriate headers depending on format
         switch (strtolower($args['request_format'])) {
-	    case 'urlencoded':
-		$headers[] = 'Content-Type: application/x-www-form-urlencoded';
-		$data = is_array($data) ? http_build_query($data) : $data;
-		break;
+            case 'urlencoded':
+                $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+                $data = is_array($data) ? http_build_query($data) : $data;
+                break;
             case 'json':
                 $headers[] = 'Content-Type: application/json';
                 if (!empty($data) && (is_object($data) || is_array($data))) {
@@ -265,7 +272,6 @@ class LinkedIn
 
         // Set appropriate headers depending on format
         switch (strtolower($args['response_format'])) {
-            // TODO: Need to be able to handle www/url-encoded format
             case 'json':
                 $headers[] = 'x-li-format: json';
                 break;
@@ -294,7 +300,6 @@ class LinkedIn
             }
         }
 
-
         error_log('REQUEST URL: ' . $curl_opts[ CURLOPT_URL ]);
         error_log('REQUEST: ' . print_r($curl_opts[ CURLOPT_POSTFIELDS ], true));
         $ch = curl_init();
@@ -312,11 +317,9 @@ class LinkedIn
         curl_close($ch);
 
         switch (strtolower($args['response_format'])) {
-            // TODO: Need to be able to handle www/url-encoded format
             case 'json':
                 $response = json_decode($response, true);
                 if (isset($response['status']) && ($response['status'] < 200 || $response['status'] > 300)) {
-			print_r($response);
                     throw new RuntimeException('Request Error: ' . $response['message'] . '. Raw Response: ' . print_r($response, true));
                 }
                 break;
@@ -334,27 +337,23 @@ class LinkedIn
         return $response;
     }
 
+    /**
+     * Set the unique state identifier
+     * @param string $state
+     */
     protected function setAuthState($state)
     {
         $this->authState = $state;
     }
 
 
+    /**
+     * Get the current auth state identifier
+     * @return string|null
+     */
     protected function getAuthState()
     {
         return $this->authState;
-    }
-
-    protected function extendArray($defaults, $args = null)
-    {
-        if (!is_array($defaults)) {
-            $defaults = array();
-        }
-        if (!is_array($args)) {
-            $args = array();
-        }
-
-        return array_merge($defaults, $args);
     }
 
     /**
