@@ -133,11 +133,11 @@ class LinkedIn
         }
 
         $data = $this->extendArray($params, array('code' => $code));
-        $token = $this->makeRequest('POST', $this->makeUrl(self::$OAUTH_URL . '/accessToken', $params), $data);
+        $response = $this->makeRequest('POST', $this->makeUrl(self::$OAUTH_URL . '/accessToken'), $data, array('request_format'=>'urlencoded'));
 
         // Cache token for future requests
-        $this->accessToken = $token->access_token;
-        $this->accessTokenExpires = $token->expires_in;
+        $this->accessToken = $response['access_token'];
+        $this->accessTokenExpires = $response['expires_in'];
 
         return $this->accessToken;
     }
@@ -157,6 +157,11 @@ class LinkedIn
     {
         return $this->accessToken;
     }
+
+	public function hasAccessToken()
+	{
+		return !empty($this->accessToken);
+	}
 
     /**
      * Set the access token manually
@@ -235,7 +240,10 @@ class LinkedIn
 
         // Set appropriate headers depending on format
         switch (strtolower($args['request_format'])) {
-            // TODO: Need to be able to handle www/url-encoded format
+	    case 'urlencoded':
+		$headers[] = 'Content-Type: application/x-www-form-urlencoded';
+		$data = is_array($data) ? http_build_query($data) : $data;
+		break;
             case 'json':
                 $headers[] = 'Content-Type: application/json';
                 if (!empty($data) && (is_object($data) || is_array($data))) {
@@ -308,6 +316,7 @@ class LinkedIn
             case 'json':
                 $response = json_decode($response, true);
                 if (isset($response['status']) && ($response['status'] < 200 || $response['status'] > 300)) {
+			print_r($response);
                     throw new RuntimeException('Request Error: ' . $response['message'] . '. Raw Response: ' . print_r($response, true));
                 }
                 break;
